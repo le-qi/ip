@@ -141,7 +141,8 @@ int main(int argc, char ** argv)
 	return user();
 }
 
-int rip() { //second thread: continuously sending rip messages
+/* Thread to send RIP messages every five seconds */
+int rip() {
 
 	time_t oldtime_one = time(NULL);
 	time_t oldtime_five = time(NULL);
@@ -168,7 +169,8 @@ int rip() { //second thread: continuously sending rip messages
 	return 0;
 }
 
-int receiver() { //listening for incoming messages
+/* Thread to continuously receive messages */
+int receiver() {
 
 	struct sockaddr_in server_addr;
 	struct sockaddr_in client_addr;
@@ -246,6 +248,7 @@ bool costInfinite(uint32_t address) {
 	return !hasNonInfiniteCost;
 }
 
+/* Prints out char array containing RIPPacket (debugging) */
 void print_buffer(char * data) {
 
 	cout << "print_buffer: SERIALIZED: " << endl;
@@ -266,6 +269,7 @@ void print_buffer(char * data) {
 
 }
 
+/* Serializes RIPPacket into character buffer to send over network */
 void serialize(RIPPacket * msgPacket, char * data) {
 	uint16_t *q = (uint16_t *) data;
 	*q = msgPacket->command;
@@ -281,6 +285,7 @@ void serialize(RIPPacket * msgPacket, char * data) {
 	}
 }
 
+/* Retrieves RIPPacket from character buffer */
 RIPPacket* deserialize(char *data) {
 	uint16_t *q = (uint16_t *) data;
 	uint16_t com = *q;
@@ -299,6 +304,7 @@ RIPPacket* deserialize(char *data) {
 	return msgPacket;
 }
 
+/* Prints out entire IP packet (debugging) */
 void print_ip_packet(void * ipp) {
 
 	cout << "PRINTING FULL PACKET: " << endl;
@@ -309,6 +315,7 @@ void print_ip_packet(void * ipp) {
 
 }
 
+/* Prints IP header in human readable form (debugging) */
 void print_ip_header (void * iph) {
 
 	ip *tester = (ip *) iph;
@@ -327,6 +334,7 @@ void print_ip_header (void * iph) {
 	cout << "Checksum: " << tester->ip_sum << endl;
 }
 
+/* Prints router's information about interfaces (debugging) */
 void print_my_interfaces() {
 	for (unsigned int i=0;i<my_interfaces.size();i++) {
 		cout << "entry i = " <<i<<"\n";
@@ -334,6 +342,7 @@ void print_my_interfaces() {
 	}
 }
 
+/* Prints local route table (debugging) */
 void print_route_table() {
 	for (unsigned int i=0;i<route_table.size();i++) {
 		cout << "entry i = " <<i<<"\n";
@@ -341,8 +350,8 @@ void print_route_table() {
 	}
 }
 
+/* Print IP packet specifics in readable form (debugging) */
 void print_ip_packet(char * ip, bool isRIP) {
-  //print header
   cout << "print_ip_packet: printing HEADER:\n";
   unsigned int *q = (unsigned int*) ip;
   cout << "header.ip_hl is " <<(int) *q <<"\n";
@@ -373,7 +382,6 @@ void print_ip_packet(char * ip, bool isRIP) {
   cout <<  "header.ip_dst.s_addr is "<<v->s_addr << "\n";
   v++;
   
-  //print payload
   cout << "print_ip_packet: printing PAYLOAD, isRIP = " << isRIP <<"\n";
   if (isRIP) {
 
@@ -383,6 +391,10 @@ void print_ip_packet(char * ip, bool isRIP) {
   }
 }
 
+/* 	Attaches IP header to data found in payload. Data to be sent to virtual IP address found
+	in dest, and the type specifies whether the packet sent is an RIP message. The test param
+	was used for debugging purposes.
+ */
 int package_and_send(char * payload, uint8_t type, uint32_t dest, uint32_t ttl, bool test) {
 
   char * buffer = (char*) malloc(MTU*sizeof(*buffer));
@@ -452,7 +464,9 @@ int package_and_send(char * payload, uint8_t type, uint32_t dest, uint32_t ttl, 
 
 }
 
-
+/* 	Called when IP packet is received. Determines whether packet should be forwarded to
+	another router or whether current router is final destination.
+ */
 int process_ip_packet(ip_packet * this_packet, bool test) {
 
 	char* payload = this_packet->payload;
@@ -490,7 +504,8 @@ int process_ip_packet(ip_packet * this_packet, bool test) {
 	return 0;
 }
 
-int user() { //third thread: ipconfig, etc (user information)
+/* Thread for user to bring interfaces up and down and query information from the router. */
+int user() {
 
 	string response;
 	string command;
@@ -541,6 +556,7 @@ int user() { //third thread: ipconfig, etc (user information)
 	return 0;
 }
 
+/* Displays router's network interfaces with other routers and their status */
 void ifconfig() {
 
 	pthread_mutex_lock(&lock);
@@ -552,6 +568,7 @@ void ifconfig() {
 
 }
 
+/* Displays route information for all other virtual IP addresses in network. */
 void routes()
 {
 	pthread_mutex_lock(&lock);
@@ -565,6 +582,7 @@ void routes()
 	pthread_mutex_unlock(&lock);
 }
 
+/* Brings an interface down. */
 void down(uint32_t num) {
 
 	pthread_mutex_lock(&lock);
@@ -602,6 +620,7 @@ void down(uint32_t num) {
 
 }
 
+/* Brings a down interface back up. */
 void up(uint32_t num) {
 
 	pthread_mutex_lock(&lock);
@@ -646,6 +665,7 @@ void up(uint32_t num) {
 
 }
 
+/* Fake packet A sent for testing. */
 RIPPacket * fakePacketa(uint16_t command)
 {
 	RIPPacket * packet = new RIPPacket(command);
@@ -654,6 +674,7 @@ RIPPacket * fakePacketa(uint16_t command)
 	return packet;
 }
 
+/* Fake packet B sent for testing. */
 RIPPacket * fakePacketb(uint16_t command)
 {
 	RIPPacket * packet = new RIPPacket(command);
@@ -664,6 +685,7 @@ RIPPacket * fakePacketb(uint16_t command)
 	return packet;
 }
 
+/* Fake packet C sent for testing. */
 RIPPacket * fakePacketc(uint16_t command)
 {
 	RIPPacket * packet = new RIPPacket(command);
@@ -672,6 +694,7 @@ RIPPacket * fakePacketc(uint16_t command)
 	return packet;
 }
 
+/* Decreases time to live for a route every second. If TTL is 0, the route is inactive and cost is set to infinity. */
 void decrement_route_TTL() {
 
 	for (unsigned int i = 0; i < route_table.size(); i++) {
@@ -690,6 +713,7 @@ void decrement_route_TTL() {
 	}
 }
 
+/* Print time to live values (debugging). */
 void print_route_ttl()
 {
 	for (unsigned int i = 0; i < route_table.size(); i++) {
@@ -698,6 +722,7 @@ void print_route_ttl()
 	cout << endl;
 }
 
+/* Create an RIPPacket. Command dictates whether packet sent is a request or response. */
 RIPPacket *create_rip_packet(uint16_t command, uint32_t send_ip) {
 
 	RIPPacket *packet = new RIPPacket(command);
@@ -716,6 +741,7 @@ RIPPacket *create_rip_packet(uint16_t command, uint32_t send_ip) {
 	return packet;
 }
 
+/* Print contents of an RIP packet (debugging) */
 void print_rip_packet(RIPPacket * packet) {
 
 	cout << packet->command << endl;
@@ -727,6 +753,7 @@ void print_rip_packet(RIPPacket * packet) {
 
 }
 
+/* Processes either an RIP packet request or a response. */
 void handle_rip_packet(RIPPacket * packet, uint32_t ip)
 {
 	uint16_t command = packet->command;
@@ -749,6 +776,7 @@ void handle_rip_packet(RIPPacket * packet, uint32_t ip)
 
 }
 
+/* Send RIP requests across all available interfaces. */
 void send_requests_all()
 {
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
@@ -764,6 +792,10 @@ void send_requests_all()
 	}
 }
 
+/*	
+	When route table information changes, triggered updates immediately sends changes
+	to all interfaces in the form of an RIP response packet.
+*/
 void triggered_updates()
 {
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
@@ -779,6 +811,7 @@ void triggered_updates()
 	}
 }
 
+/* Prints information used for a single route (debugging). */
 void print_route(route *r)
 {
 	cout << "Destination: " << cast_ntoa(r->dest) << " ";
@@ -787,6 +820,7 @@ void print_route(route *r)
 	cout << "TTL: " << r->ttl << endl;
 }
 
+/* Called when route information is received via periodic updates. Route table updated. */
 void update_routes(RIPPacket * rip, uint32_t other_ip) {
 
 	bool changed = false;
@@ -799,6 +833,7 @@ void update_routes(RIPPacket * rip, uint32_t other_ip) {
 
 }
 
+/* Resolves route table to contain up to date information about available routes. */
 bool merge_routes(uint32_t dest, uint32_t cost, uint32_t other_ip) {
 
 	for (uint32_t i = 0; i < route_table.size(); i++) {
@@ -839,6 +874,7 @@ bool merge_routes(uint32_t dest, uint32_t cost, uint32_t other_ip) {
 	return true;
 }
 
+/* Parses text file detailing interface details. */
 void read_text(char *text) {
 
 	string line;
@@ -926,6 +962,7 @@ void read_text(char *text) {
 	return;
 }
 
+/* For an IP address on local interface, returns remote IP address. */
 uint32_t my_ip_to_other(uint32_t my_ip) {
 
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
@@ -936,6 +973,7 @@ uint32_t my_ip_to_other(uint32_t my_ip) {
 	return 0;
 }
 
+/* For a given remote IP address, returns IP address of local interface. */
 uint32_t other_ip_to_my(uint32_t my_ip) {
 
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
@@ -946,6 +984,7 @@ uint32_t other_ip_to_my(uint32_t my_ip) {
 	return 0;
 }
 
+/* Returns the appropriate interface corresponding to a route. */
 interface *route_to_interface(route *r) {
 
 	uint32_t next_hop = r->next_hop;
@@ -957,6 +996,7 @@ interface *route_to_interface(route *r) {
 	return NULL;
 }
 
+/* Returns the interface number corresponding to a remote vitual IP address. */
 uint32_t vip_to_interface(uint32_t ip) {
 
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
@@ -967,6 +1007,7 @@ uint32_t vip_to_interface(uint32_t ip) {
 	return 0;
 }
 
+/* Determines whether a virtual IP address corresponds to an interface. */
 bool destination_is_interface(uint32_t ip) {
 	for (unsigned int i = 0; i < my_interfaces.size(); i++) {
 		if (my_interfaces[i].my_vip == ip) {
@@ -976,6 +1017,7 @@ bool destination_is_interface(uint32_t ip) {
 	return false;
 }
 
+/* Converts addresses from network byte order to dotted string. */
 string cast_ntoa(uint32_t n) {
 	struct in_addr address;
 	address.s_addr = n;
@@ -984,6 +1026,7 @@ string cast_ntoa(uint32_t n) {
 	return str;
 }
 
+/* Converts dotted notation string to network byte order address. */
 uint32_t cast_aton(char *a) {
 	return inet_addr(a);
 }
